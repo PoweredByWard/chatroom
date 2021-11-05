@@ -5,21 +5,31 @@ const Webcam = function (props) {
 
   useEffect(() => {
     getVideo();
+    setInterval(() => {
+      props.camStream(videoRef.current);
+    }, 1000/30);
   }, [videoRef]);
 
   const getVideo = () => {
-    navigator.mediaDevices
-      .getUserMedia({ video: { width: 300 } })
-      .then((stream) => {
-        console.log(stream)
-        let video = videoRef.current;
-        video.srcObject = stream;
-        video.play();
-        props.camStream(stream);
-      })
-      .catch((err) => {
-        console.error("error:", err);
-      });
+    navigator.getUserMedia =
+      navigator.getUserMedia ||
+      navigator.webkitGetUserMedia ||
+      navigator.mozGetUserMedia ||
+      navigator.msgGetUserMedia;
+    if (navigator.getUserMedia) {
+      navigator.mediaDevices
+        .getUserMedia({ video: { width: 300 } })
+        .then((stream) => {
+          console.log(stream);
+          let video = videoRef.current;
+          video.srcObject = stream;
+          video.play();
+        })
+        .catch((err) => {
+          console.error("error:", err);
+        });
+    }
+    console.log("getvideo");
   };
   return <video className="w-full h-full" ref={videoRef} />;
 };

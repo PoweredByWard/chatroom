@@ -8,10 +8,10 @@ module.exports = {
   getRooms: async () => {
     return rooms;
   },
-  createRoom: async (members,roomType) => {
+  createRoom: async (members, roomType) => {
     let id = cuid();
     console.log(room);
-    rooms[id] = new room(id, [],roomType);
+    rooms[id] = new room(id, [], roomType);
     members.forEach((member) => {
       module.exports.joinRoom(id, member);
     });
@@ -35,6 +35,7 @@ module.exports = {
     sockets[socketId].join(roomId);
   },
   getSocketRooms: async (socketId) => {
+    if (!sockets[socketId]) return [];
     return Array.from(sockets[socketId].rooms).slice(1);
   },
   leaveRoom: async (roomId, socketId, room_ended) => {
@@ -75,7 +76,7 @@ module.exports = {
       await socket.to(room).emit("member_joined", socket.id);
       await socket.emit("member_joined", socket.id);
     } else {
-      await module.exports.createRoom([socket.id],roomType);
+      await module.exports.createRoom([socket.id], roomType);
       console.log(rooms);
       console.log(Object.values(sockets).length);
     }
@@ -83,11 +84,22 @@ module.exports = {
   sendMessage: async (socketId, roomId, message) => {
     if (!roomId) {
       let socketRooms = await module.exports.getSocketRooms(socketId);
-      roomId = socketRooms[1];
+      roomId = socketRooms[0];
     }
     console.log({ sender: socketId, content: message });
     sockets[socketId]
       .to(roomId)
       .emit("message", { sender: socketId, content: message });
+    console.log("rooms", rooms);
+  },
+  streamWebcam: async (socketId, dataURL, roomId) => {
+    if (!sockets[socketId]) return;
+    if (!roomId) {
+      let socketRooms = await module.exports.getSocketRooms(socketId);
+      roomId = socketRooms[0];
+    }
+    sockets[socketId].broadcast
+      .to(roomId)
+      .emit("webcam_stream", { sender: socketId, content: dataURL });
   },
 };

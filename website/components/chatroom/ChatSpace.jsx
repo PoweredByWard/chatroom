@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 import logo from "../../public/logo.jpg";
 
 const ChatSpace = (props) => {
-  console.log(props.messages);
   const chat = useRef();
   useEffect(() => {
     scrollToBottom();
@@ -26,12 +25,9 @@ const ChatSpace = (props) => {
           <div class="grid grid-cols-12 gap-y-0.5">
             {props.messages.map((msg) => {
               if (msg.sender == null) {
-                console.log(msg.id);
                 const previousMessage = props.messages[msg.id - 2]
                   ? props.messages[msg.id - 2]
                   : null;
-                console.log(previousMessage);
-                console.log(msg);
                 return (
                   <div
                     key={msg.id.toString()}
@@ -55,7 +51,6 @@ const ChatSpace = (props) => {
                   </div>
                 );
               } else {
-                console.log(msg)
                 return (
                   <div
                     key={msg.id.toString()}

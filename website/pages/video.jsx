@@ -8,16 +8,42 @@ import webSocket from "../components/websocket/websocket";
 const Video = () => {
   const [searching, setSearching] = useState(false);
   const [connected, setConnected] = useState(false);
-  const strangerCam = useRef();
+  const [lastFrame, setLastFrame] = useState("");
+  const strangerWebcam = useRef();
   const socketCon = webSocket();
 
   const [socket, setSocket] = useState();
 
   const input = useRef();
-  const [messages, dispatch] = useReducer((state, action) => {
+
+  const [strangerWebcamSrc, dispatchWebcam] = useReducer((state, action) => {
+    if (action.message) action.message.id = state.length + 1;
+    switch (action.type) {
+      case "SEND_WEBCAM":
+        socket?.emit("webcam", { content: action.dataURL });
+        return lastFrame;
+      case "RECEIVE_WEBCAM":
+        if (action.videoDataUrl) {
+          setLastFrame(action.videoDataUrl);
+          return action.videoDataUrl;
+        } else {
+          return lastFrame;
+        }
+      case "RESET_WEBCAM":
+        return "";
+      default:
+        new Error("Unknown action type");
+        return state;
+    }
+  }, "");
+
+  const [messages, dispatchMsg] = useReducer((state, action) => {
     if (action.message) action.message.id = state.length + 1;
     switch (action.type) {
       case "SEND_MESSAGE":
+        console.log(action);
+
+
         socket.emit("message", action.message);
         return [...state, action.message];
 
@@ -51,10 +77,14 @@ const Video = () => {
       socketCon.on("room_ended", () => {
         setConnected(false);
         setSearching(false);
-        dispatch({ type: "RESET_MESSAGES" });
+        dispatchMsg({ type: "RESET_MESSAGES" });
       });
       socketCon.on("message", (message) => {
-        dispatch({ type: "RECEIVE_MESSAGE", message });
+        dispatchMsg({ type: "RECEIVE_MESSAGE", message });
+      });
+      socketCon.on("webcam_stream", (props) => {
+        const videoDataUrl = props.content;
+        dispatchWebcam({ type: "RECEIVE_WEBCAM", videoDataUrl });
       });
     }
   }, [socketCon]);
@@ -72,7 +102,7 @@ const Video = () => {
   function sendMessage() {
     let content = input.current.value;
     if (socket?.connected && content.replaceAll(" ", "") != "") {
-      dispatch({
+      dispatchMsg({
         type: "SEND_MESSAGE",
         message: { sender: null, content: content },
       });
@@ -85,7 +115,7 @@ const Video = () => {
   async function stopChat() {
     setConnected(false);
     setSearching(false);
-    dispatch({ type: "RESET_MESSAGES" });
+    dispatchMsg({ type: "RESET_MESSAGES" });
     socketCon.emit("leave_room");
   }
 
@@ -94,10 +124,17 @@ const Video = () => {
     socketCon.emit("find_room", "webcam");
   }
 
-  const streamCamera = function (stream) {
-    if (!connected) return;
-    console.log(stream);
-    socketCon.emit("webcam", stream);
+  const streamCamera = async function (video) {
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    // scale the canvas accordingly
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    // draw the video at that frame
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    // convert it to a usable data URL
+    const dataURL = canvas.toDataURL("image/jpeg");
+    if (dataURL != "") dispatchWebcam({ type: "SEND_WEBCAM", dataURL });
   };
 
   return (
@@ -107,7 +144,11 @@ const Video = () => {
           <Webcam camStream={streamCamera} connected={connected} />
         </div>
         <div className="bg-gray-400 h-1/2 rounded-md mt-2 p-2">
-          <video className="w-full h-full bg-gray-800" useRef={strangerCam} />
+          <img
+            className="w-full"
+            src={strangerWebcamSrc}
+            useRef={strangerWebcam}
+          />
         </div>
       </div>
       <div class="flex flex-col flex-auto h-full flex-grow right-0 left-0 p-4">

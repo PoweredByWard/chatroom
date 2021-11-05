@@ -33,8 +33,6 @@ module.exports = {
   connectSocket: async (socket) => {
     eventList.forEach((event) => {
       socket.on(event.name, async (props) => {
-        console.log("name",event.name)
-        console.log("props",props)
         await event.event(socket, props);
       });
     });
